@@ -52,24 +52,19 @@ fun get_nth (str_list:string list, n:int) =
 
 (* fun 7 *)
 fun date_to_string (date:(int*int*int)) =
-  let val months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-      fun month_to_string (month:int, month_str: string list) =
-	if month=1
-	then hd month_str
-	else month_to_string(month-1, tl month_str)
+  let val months = ["January", "February", "March", "April",
+		    "May", "June", "July", "August", "September",
+		    "October", "November", "December"]
   in
-      month_to_string(#2 date, months) ^ " " ^ Int.toString(#3 date) ^ ", " ^ Int.toString(#1 date)
+      get_nth(months, #2 date) ^ " " ^ Int.toString(#3 date) ^
+      ", " ^ Int.toString(#1 date)
   end
        
 (* fun 8 *)
 fun number_before_reaching_sum (sum:int, lst:int list) =
-  let fun helper (sum:int, lst:int list, acc:int) =
-	if sum <= hd lst
-	then acc
-	else helper(sum - hd lst, tl lst, acc+1)
-  in
-      helper(sum, lst, 0)
-  end
+  if sum <= hd lst
+  then 0
+  else 1 + number_before_reaching_sum(sum - hd lst, tl lst)
 
 (* fun 9 *)
 fun what_month day:int =
@@ -80,16 +75,12 @@ fun what_month day:int =
 
 (* fun 10 *)
 fun month_range (day1:int, day2:int) =
-  let fun helper (day1:int, day2:int, month_list:int list) =
-	if day1 > day2
-	then month_list
-	else helper(day1, day2-1, what_month(day2)::month_list)
-  in
-      helper(day1, day2, [])
-  end
+  if day1 > day2
+  then []
+  else what_month(day1) :: month_range(day1 + 1, day2)
 
 (* fun 11 *)
-fun oldest (dates:(int*int*int) list) =
+fun oldest_prev (dates:(int*int*int) list) =
   let
       fun older (date1:(int*int*int), date2:(int*int*int)) =
 	if is_older(date1, date2)
@@ -106,7 +97,17 @@ fun oldest (dates:(int*int*int) list) =
       else SOME (helper(tl dates, hd dates))
   end
 
-      
+fun oldest (dates : (int*int*int) list) =
+  if null dates
+  then NONE
+  else
+      let val ans = oldest(tl dates)
+      in
+	  if isSome ans andalso is_older(valOf ans, hd dates)
+	  then ans
+	  else SOME (hd dates)
+      end
+
 (* challenge problem *)
 (* helper functions *)
 fun exist (num:int, int_list:int list) =
@@ -116,12 +117,22 @@ fun exist (num:int, int_list:int list) =
   then true
   else exist(num, tl int_list)
 
+fun mem (x: int, xs: int list) =
+  not (null xs) andalso (hd xs = x orelse mem(x, tl xs))
+
 fun dedup (lst1:int list, lst2: int list) =
   if null lst1
   then lst2
   else if exist(hd lst1, lst2)
   then dedup(tl lst1, lst2)
   else dedup(tl lst1, (hd lst1)::lst2)
+
+fun remove_duplicates (xs: int list) =
+  if null xs
+  then []
+  else if mem(hd xs, tl xs)
+  then remove_duplicates(tl xs)
+  else (hd xs)::remove_duplicates(tl xs)
 
 (* fun 12 *)
 fun number_in_months_challenge (dates:(int*int*int) list, months:int list) =
@@ -134,36 +145,31 @@ fun dates_in_months_challenge (dates:(int*int*int) list, months:int list) =
 (* fun 14 *)
 fun reasonable_date (date:(int*int*int)) =
   let
-      fun isLeapYear(date:(int*int*int)):bool =
+      (* fun isLeapYear(date:(int*int*int)):bool =
 	if #1 date mod 400 = 0
 	then true
 	else if #1 date mod 4 = 0 andalso #1 date mod 100 <> 0
 	then true
-	else false
+	else false*)
+      val isLeap = (#1 date mod 400 = 0) orelse
+		   (#1 date mod 4 = 0 andalso #1 date mod 100 <> 0)
+      val feb_len = if isLeap then 29 else 28
+      val month_day = [31,feb_len,31,30,31,30,31,31,30,31,30,31]
 
-      val month_day = [31,28,31,30,31,30,31,31,30,31,30,31]
-
-      fun get_month_day (month:int, month_day:int list) =
+      (* fun get_month_day (month:int, month_day:int list) =
 	if month = 1
 	then hd month_day
-	else get_month_day(month-1, tl month_day)
+	else get_month_day(month-1, tl month_day) *)
+      fun get_nth (xs: int list, x:int) =
+	if x=1
+	then hd xs
+	else get_nth(tl xs, x-1)
+      val year = #1 date
+      val month = #2 date
+      val day = #3 date
   in
-      (* year *)
-      if #1 date <= 0
-      then false
-      (* month *)
-      else if #2 date < 1 orelse #2 date > 12
-      then false
-      (* day *)
-      else
-	  let
-	      val max_day =
-		  if isLeapYear(date) andalso #2 date = 2
-		  then get_month_day(#2 date, month_day) + 1
-		  else get_month_day(#2 date, month_day)
-	  in
-	      #3 date >= 1 andalso #3 date <= max_day
-	  end
+      year > 0 andalso month >= 1 andalso month <= 12 andalso
+      day >= 1 andalso day <= get_nth(month_day, month)
   end
       
       
