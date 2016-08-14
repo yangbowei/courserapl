@@ -133,7 +133,7 @@ fun officiate (cs, ms, goal) =
 						end
 				      | Discard x => let val new_hd = remove_card(hc, x, IllegalMove)
 						     in
-							 held_cards(cs', ms', new_hd, goal)
+							 held_cards(cs, ms', new_hd, goal)
 						     end
   in
       held_cards(cs,ms,[],goal)
