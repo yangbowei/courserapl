@@ -120,21 +120,95 @@ fun score (cs, goal) =
 
 fun officiate (cs, ms, goal) = 
   let fun held_cards (cs, ms, hc, goal) =
-	case cs of
+	case ms of
 	    [] => score(hc, goal)
-	  | c::cs' => case ms of
-			  [] => score(hc, goal)
-			| m::ms' => case m of
-					Draw => let val raw_score = sum_cards(c::hc)
+	  | m::ms' => case m of
+			  Discard x => let val removed = remove_card(hc, x, IllegalMove)
+				       in
+					   held_cards(cs, ms', removed, goal)
+				       end
+			| Draw => case cs of
+				      [] => score(hc, goal)
+				    | c::cs' => let val card_sum = sum_cards(c::hc)
 						in
-						    if raw_score > goal
+						    if card_sum > goal
 						    then score(c::hc, goal)
 						    else held_cards(cs', ms', c::hc, goal)
 						end
-				      | Discard x => let val new_hd = remove_card(hc, x, IllegalMove)
-						     in
-							 held_cards(cs, ms', new_hd, goal)
-						     end
+  in
+      held_cards(cs, ms, [], goal)
+  end
+
+(*fun officiate2 (cs, ms, goal) = 
+  let fun held_cards (cs, ms, hc, goal) =
+	case ms of
+	    [] => hc
+	  | m::ms' => case m of
+			  Discard x => let val new_hd = remove_card(hc, x, IllegalMove)
+				       in
+					   held_cards(cs, ms', new_hd, goal)
+				       end
+			| Draw => case cs of
+				      [] => hc
+				    | c::cs' => let val raw_score = sum_cards(c::hc)
+						in
+						    if raw_score > goal
+						    then c::hc
+						    else held_cards(cs', ms', c::hc, goal)
+						end
   in
       held_cards(cs,ms,[],goal)
   end
+ *)
+
+fun score_challenge (cs, goal) =
+  let fun smallest_sum_card (cs,acc,ace) =
+	case cs of
+	    [] => (acc,ace)
+	  | (_, Num x)::cs' => smallest_sum_card(cs',x+acc,ace)
+	  | (_, Ace)::cs' => smallest_sum_card(cs',1+acc,1+ace)
+	  | _::cs' => smallest_sum_card(cs',10+acc,ace)
+
+      val (smallest,ace) = smallest_sum_card(cs,0,0)
+      val n = if goal - smallest < 0 then 0 else (goal - smallest) div 10
+      val preliminary = if ace <= n
+			then goal - (smallest + ace*10)
+			else Int.min(goal - smallest - n*10, 3*(smallest + 10*n + 10 - goal))
+  in
+      if all_same_color(cs)
+      then preliminary div 2
+      else preliminary
+  end
+
+fun officiate_challenge (cs, ms, goal) = 
+  let fun smallest_sum_cards cs =
+	case cs of
+	    [] => 0
+	  | c::cs' => case c of
+			  (_,Num x) => x + smallest_sum_cards cs'
+			| (_,Ace) => 1 + smallest_sum_cards cs'
+			| _ => 10 + smallest_sum_cards cs'
+						       
+      fun held_cards (cs, ms, hc, goal) =
+	case ms of
+	    [] => score_challenge(hc, goal)
+	  | m::ms' => case m of
+			  Discard x => let val removed = remove_card(hc, x, IllegalMove)
+				       in
+					   held_cards(cs, ms', removed, goal)
+				       end
+			| Draw => case cs of
+				      [] => score_challenge(hc, goal)
+				    | c::cs' => let val card_sum = smallest_sum_cards(c::hc)
+						in
+						    if card_sum >= goal
+						    then score_challenge(c::hc, goal)
+						    else held_cards(cs', ms', c::hc, goal)
+						end
+  in
+      held_cards(cs, ms, [], goal)
+  end
+
+      
+fun careful_player (cs, goal) =
+  
