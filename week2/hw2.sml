@@ -170,10 +170,14 @@ fun score_challenge (cs, goal) =
 	  | _::cs' => smallest_sum_card(cs',10+acc,ace)
 
       val (smallest,ace) = smallest_sum_card(cs,0,0)
-      val n = if goal - smallest < 0 then 0 else (goal - smallest) div 10
-      val preliminary = if ace <= n
-			then goal - (smallest + ace*10)
-			else Int.min(goal - smallest - n*10, 3*(smallest + 10*n + 10 - goal))
+      val preliminary = if goal <= smallest
+			then 3*(smallest - goal)
+			else let val n = (goal - smallest) div 10
+			     in
+				 if ace <= n
+				 then goal - (smallest + ace*10)
+				 else Int.min(goal-smallest-n*10, 3*(smallest+10*n+10-goal))
+			     end
   in
       if all_same_color(cs)
       then preliminary div 2
@@ -211,4 +215,46 @@ fun officiate_challenge (cs, ms, goal) =
 
       
 fun careful_player (cs, goal) =
-  
+  let fun find_card_by_value (cs, n) =
+	if n <= 0
+	then NONE
+	else
+	    case cs of
+		[] => NONE
+	      | c::cs' => if card_value c = n
+			  then SOME c
+			  else find_card_by_value(cs', n)
+
+      fun helper(cs, moves, hc, goal) =
+	case cs of
+	    [] => moves
+	  | c::cs' => let val current = sum_cards(hc)
+		      in
+			  if goal= current
+			  then moves
+			  else if goal > current + 10
+			  then helper(cs', Draw::moves, c::hc, goal)
+			  else (* check discard and draw to achive 0 *)
+			      let val diff = current + card_value c - goal
+				  val card_option = find_card_by_value(hc, diff)
+			      in
+				  case card_option of
+				      NONE => (* my strategy *)
+				      if diff <= 0
+				      then helper(cs', Draw::moves, c::hc, goal)
+				      else moves
+				    | SOME cx => Draw::Discard cx::moves
+			      end
+		      end
+      val ms = helper(cs, [], [], goal)
+  in
+      case ms of
+	  [] => []
+	| _ => rev ms
+  end
+      
+
+val c2 = [(Hearts, Num 4), (Hearts, Ace)]
+val c3 = [(Hearts, Num 4), (Hearts, Ace), (Spades, Num 1)]
+val c4 = [(Hearts, Num 4), (Spades, Num 1), (Hearts, Ace)]
+	     
